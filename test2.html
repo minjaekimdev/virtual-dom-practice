@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Rendering Pipeline Test</title>
+    <style>
+      .box {
+        width: 100px;
+        height: 100px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        position: absolute;
+        transition: all 1s; /* 변화를 관찰하기 위해 1초간 실행 */
+      }
+      #reflow-box {
+        background-color: #ff4757;
+        top: 100px;
+        left: 50px;
+      }
+      #composite-box {
+        background-color: #2ed573;
+        top: 250px;
+        left: 50px;
+      }
+      .controls {
+        margin-bottom: 200px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="controls">
+      <button onclick="triggerReflow()">1. Reflow 유발 (margin 변경)</button>
+      <button onclick="triggerRepaint()">
+        2. Repaint 유발 (bg-color 변경)
+      </button>
+      <button onclick="triggerComposite()">
+        3. Composition 유발 (transform 변경)
+      </button>
+    </div>
+
+    <div id="reflow-box" class="box">Reflow</div>
+    <div id="composite-box" class="box">Composite</div>
+
+    <script>
+      function triggerReflow() {
+        // margin은 레이아웃 수치를 변화시키므로 Reflow 발생
+        const box = document.getElementById("reflow-box");
+        box.style.marginLeft =
+          box.style.marginLeft === "200px" ? "0px" : "200px";
+      }
+
+      function triggerRepaint() {
+        // 색상만 변경되므로 Layout은 건너뛰고 Repaint 발생
+        const box = document.getElementById("reflow-box");
+        box.style.backgroundColor =
+          box.style.backgroundColor === "blue" ? "#ff4757" : "blue";
+      }
+
+      function triggerComposite() {
+        // transform은 레이어를 분리하여 GPU에서 처리 (Layout, Paint 생략)
+        const box = document.getElementById("composite-box");
+        box.style.transform =
+          box.style.transform === "translateX(200px)"
+            ? "translateX(0px)"
+            : "translateX(200px)";
+      }
+    </script>
+  </body>
+</html>

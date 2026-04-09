@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Layout Thrashing Test</title>
+    <style>
+      .box {
+        width: 100%;
+        height: 20px;
+        margin: 2px 0;
+        background-color: #3498db;
+        transition: none; /* 애니메이션 없이 즉각 변화 확인 */
+      }
+      .controls {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: white;
+        padding: 15px;
+        border: 2px solid #000;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="controls">
+      <strong>박스 500개 제어</strong>
+      <button onclick="badAnimation()">1. 나쁜 예 (Thrashing 발생)</button>
+      <button onclick="goodAnimation()">2. 좋은 예 (Batching 적용)</button>
+      <div id="status">상태: 대기 중</div>
+    </div>
+
+    <div id="container"></div>
+
+    <script>
+      // 1. 테스트를 위해 박스 500개 생성
+      const container = document.getElementById("container");
+      for (let i = 0; i < 500; i++) {
+        const div = document.createElement("div");
+        div.className = "box";
+        container.appendChild(div);
+      }
+
+      // 2. 나쁜 예: 루프 안에서 읽기(Read)와 쓰기(Write)를 반복
+      function badAnimation() {
+        const boxes = document.querySelectorAll(".box");
+        const status = document.getElementById("status");
+
+        console.time("Bad Performance");
+        status.innerText = "상태: 나쁜 예 실행 중...";
+
+        for (let i = 0; i < boxes.length; i++) {
+          // [READ] offsetHeight를 읽는 순간, 브라우저는 최신 값을 주기 위해 리플로우를 강제함
+          const currentHeight = boxes[i].offsetHeight;
+          // [WRITE] 스타일을 변경함
+          boxes[i].style.height = currentHeight + 1 + "px";
+        }
+
+        console.timeEnd("Bad Performance");
+        status.innerText = "상태: 나쁜 예 완료 (콘솔 확인)";
+      }
+
+      // 3. 좋은 예: 읽기(Read)를 모두 마친 뒤, 쓰기(Write)를 한꺼번에 처리
+      function goodAnimation() {
+        const boxes = document.querySelectorAll(".box");
+        const status = document.getElementById("status");
+        const heights = [];
+
+        console.time("Good Performance");
+        status.innerText = "상태: 좋은 예 실행 중...";
+
+        // [READ] 한꺼번에 모든 높이 값을 읽어둠 (레이아웃 정보를 캐싱)
+        for (let i = 0; i < boxes.length; i++) {
+          heights.push(boxes[i].offsetHeight);
+        }
+
+        // [WRITE] 읽어둔 값을 바탕으로 한꺼번에 스타일 변경
+        for (let i = 0; i < boxes.length; i++) {
+          boxes[i].style.height = heights[i] + 1 + "px";
+        }
+
+        console.timeEnd("Good Performance");
+        status.innerText = "상태: 좋은 예 완료 (콘솔 확인)";
+      }
+    </script>
+  </body>
+</html>
