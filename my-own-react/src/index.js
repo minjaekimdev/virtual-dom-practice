@@ -1,4 +1,5 @@
 /** @jsx Didact.createElement */
+// babel에게 JSX를 만나면 React.createElement를 사용하지 말고 Didact.createElement를 사용하라고 명령
 const element = (
   <div id="container">
     <h1 title="foo">Hello Didact</h1>

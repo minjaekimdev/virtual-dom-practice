@@ -1,3 +1,4 @@
+// 가상 DOM의 설계도 작성
 function createElement(type, props, ...children) {
   return {
     type,
@@ -26,4 +27,5 @@ const Didact = {
 };
 
 // 브라우저 환경에서 전역 변수로 할당 (Babel Standalone 대응)
+// 추후 index.js 실행 시 Didact 사용을 위함 
 window.Didact = Didact;
