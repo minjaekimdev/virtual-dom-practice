@@ -7,9 +7,8 @@ const element = (
   </div>
 );
 
-// 생성된 객체(가상 DOM)를 콘솔에서 확인
-console.log("Virtual DOM Object:", element);
-
-// 다음 단계에서 구현할 임시 render (구조 확인용)
 const container = document.getElementById("root");
-container.innerHTML = `<pre>${JSON.stringify(element, null, 2)}</pre>`;
+
+// 자식: element(가상 DOM 노드), 타겟 노드: <div id="root"></div>(실제 DOM 노드)
+// 렌더 단계를 시작한다.
+Didact.render(element, container);
