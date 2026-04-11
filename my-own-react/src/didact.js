@@ -81,6 +81,7 @@ function workLoop(deadline) {
     shouldYield = deadline.timeRemaining() < 1;
   }
   if (!nextUnitOfWork && wipRoot) {
+    // 모든 처리가 완료되었고 wipRoot가 생성되었다면
     commitRoot(); // 추가 예정
   }
   requestIdleCallback(workLoop);
@@ -90,6 +91,73 @@ function workLoop(deadline) {
 // workLoop 호출 시 deadline 객체를 알아서 넣어준다.
 // 실제 리액트 팀에서는 저수준 API를 조합해서 만든 Scheduler 패키지를 별도로 운용하지만, 아이디어는 동일하다.
 requestIdleCallback(workLoop);
+
+function commitRoot() {
+  // 삭제할 노드를 삭제한다.
+  for (const fiber of deletions) {
+    const parentDom = fiber.parent.dom;
+    parentDom.removeChild(fiber.dom);
+  }
+
+  // wip트리를 타고 가며 dom을 최신화한다.
+  commitWork(wipRoot.child);
+
+  // 커밋이 다 끝나면 wipTree를 currentTree로 저장한다.
+  currentRoot = wipRoot;
+  wipRoot = null;
+}
+
+function commitWork(fiber) {
+  if (!fiber) return;
+  // 현재는 WIP 트리가 만들어진 상태
+  // WIP 트리를 검사하며 노드들을 처리하고, 이를 실제 DOM 트리에 반영한다.
+
+  // effectTag가 UPDATE인 경우
+  if (fiber.effectTag === "UPDATE" && fiber.dom != null) {
+    const oldProps = fiber.alternate.props;
+    const newProps = fiber.props;
+
+    // 기존 props에 있는 속성을 새 props에만 있는 속성으로 업데이트
+    for (const [key, value] of Object.entries(newProps)) {
+      if (key === "children") {
+        continue;
+      }
+      if (value != oldProps[key]) {
+        // 이벤트 중복등록 해결하기
+        if (key.startsWith("on")) {
+          const eventType = key.toLowerCase().substring(2);
+
+          if (oldProps[key]) {
+            fiber.dom.removeEventListener(eventType, oldProps[key]);
+          }
+          fiber.dom.addEventListener(eventType, value);
+        } else {
+          fiber.dom[key] = value;
+        }
+      }
+    }
+    // 기존 props에만 있고, 새 props에는 없는 속성을 삭제
+    for (const [key] of Object.entries(oldProps)) {
+      if (key === "children") continue;
+
+      if (newProps[key] === undefined) {
+        fiber.dom.removeAttribute(key);
+      }
+    }
+  }
+
+  // effectTag가 PLACEMENT인 경우
+  if (fiber.effectTag === "PLACEMENT" && fiber.dom != null) {
+    fiber.parent.dom.appendChild(fiber.dom);
+  }
+
+  if (fiber.child) {
+    commitWork(fiber.child);
+  }
+  if (fiber.sibling) {
+    commitWork(fiber.sibling);
+  }
+}
 
 // 여기서 diffing(생성, 삭제, 수정 등)을 실행한다.
 function reconcileChildren(wipFiber, elements) {
@@ -178,6 +246,7 @@ function performUnitOfWork(fiber) {
   // 따라서 그렇지 않은 경우에만 실제 DOM 노드를 만들어 연결해준다.
   if (!fiber.dom) {
     // createDom으로 실제 DOM 노드 만들기
+    // commit 단계에서의 화면 끊김(jank)를 방지하기 위해 일단 만들어두고, 한번에 반영한다.
     fiber.dom = createDom(fiber);
   }
 
