@@ -55,6 +55,8 @@
           // [READ] offsetHeight를 읽는 순간, 브라우저는 최신 값을 주기 위해 리플로우를 강제함
           const currentHeight = boxes[i].offsetHeight;
           // [WRITE] 스타일을 변경함
+          // 스타일을 변경한다고 해서 바로 화면을 다시 그리지는 않는다.
+          // 스타일이 변경될 마다 화면의 레이아웃을 다시 그리게 되면 심각한 성능 저하가 발생한다.
           boxes[i].style.height = currentHeight + 1 + "px";
         }
 

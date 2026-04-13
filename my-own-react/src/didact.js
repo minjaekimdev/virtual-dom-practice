@@ -159,7 +159,9 @@ function commitWork(fiber) {
   }
 }
 
-// 여기서 diffing(생성, 삭제, 수정 등)을 실행한다.
+// 여기서 diffing을 실행한다.
+// elements(children)에 대한 fiber를 생성하고, 이들과 wipFiber의 부모 관계를 연결한다.
+// children 간의 sibling 관계도 연결한다(1 -> 2 단방향)
 function reconcileChildren(wipFiber, elements) {
   let index = 0;
   // 1. 비교 대상(과거의 나)의 첫 번째 자식을 찾는다.
@@ -180,7 +182,7 @@ function reconcileChildren(wipFiber, elements) {
 
     if (sameType) {
       // [CASE 1] 업데이트 (UPDATE)
-      // - 기존 DOM 노드를 그대로 가져다 씁니다 (oldFiber.dom).
+      // - 기존 DOM 노드를 그대로 가져다 씁니다 (oldFiber.dom). -> 성능 최적화의 핵심
       // - 새로운 props만 챙겨서 파이버를 만드세요.
       // - alternate에 oldFiber를 연결한다.
       // alternate는 타입이 같은 경우에 기존 노드의 데이터를 물려받기 위함이다. 따라서 다르거나 새로 생성해야 하는 경우 null이 저장된다.
@@ -239,20 +241,34 @@ function reconcileChildren(wipFiber, elements) {
   }
 }
 
-// 가상 DOM 노드들을 재료로 삼아 파이버 트리를 만든다.
-function performUnitOfWork(fiber) {
+function updateFunctionComponent(fiber) {
+  reconcileChildren(fiber, [fiber.type(fiber.props)]);
+}
+
+function updateHostComponent(fiber) {
   // 1. 실제 DOM 노드를 만들어서 fiber.dom에 연결 (createDom 사용)
   // reder 함수를 처음 호출한 경우에는 이미 fiber.dom에 실제 dom이 연결된 상태이다.
   // 따라서 그렇지 않은 경우에만 실제 DOM 노드를 만들어 연결해준다.
   if (!fiber.dom) {
     // createDom으로 실제 DOM 노드 만들기
     // commit 단계에서의 화면 끊김(jank)를 방지하기 위해 일단 만들어두고, 한번에 반영한다.
+    // 여기서 미리 만들어두는데, 이거 만드는것도 비용이지 않을까? -> 실제 리액트에서는 다르게 동작
     fiber.dom = createDom(fiber);
   }
 
-  // 2. 자식 Fiber 생성 및 diffing
   const elements = fiber.props.children;
   reconcileChildren(fiber, elements);
+}
+
+// 가상 DOM 노드들을 재료로 삼아 파이버 트리를 만든다.
+function performUnitOfWork(fiber) {
+  const isFunctionComponent = typeof fiber.type === "function";
+
+  if (isFunctionComponent) {
+    updateFunctionComponent(fiber);
+  } else {
+    updateHostComponent(fiber);
+  }
 
   // 3. 다음 작업 단위(Next Unit of Work)를 찾아서 반환
   // 자식이 있으면 자식으로 간다
