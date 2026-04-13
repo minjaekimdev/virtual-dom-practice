@@ -94,10 +94,7 @@ requestIdleCallback(workLoop);
 
 function commitRoot() {
   // 삭제할 노드를 삭제한다.
-  for (const fiber of deletions) {
-    const parentDom = fiber.parent.dom;
-    parentDom.removeChild(fiber.dom);
-  }
+  deletions.forEach((fiber) => commitDeletion(fiber));
 
   // wip트리를 타고 가며 dom을 최신화한다.
   commitWork(wipRoot.child);
@@ -105,6 +102,32 @@ function commitRoot() {
   // 커밋이 다 끝나면 wipTree를 currentTree로 저장한다.
   currentRoot = wipRoot;
   wipRoot = null;
+}
+
+function commitDeletion(fiber, domParent) {
+  if (!domParent) {
+    let parentFiber = fiber.parent;
+    while (!parentFiber.dom) {
+      parentFiber = parentFiber.parent;
+    }
+    domParent = parentFiber.dom;
+  }
+  // fiber의 type이 함수형 컴포넌트인 경우 fiber.dom이 존재하지 않는다.
+  // 따라서 fiber.child를 각각 모두 삭제해줘야 한다.
+  if (fiber.dom) {
+    domParent.removeChild(fiber.dom);
+  } else {
+    // 함수형 컴포넌트라면
+    if (fiber.child) {
+      commitDeletion(fiber.child, domParent);
+
+      let sibling = fiber.child.sibling;
+      while (sibling) {
+        commitDeletion(sibling, domParent);
+        sibling = sibling.sibling;
+      }
+    }
+  }
 }
 
 function commitWork(fiber) {
@@ -148,7 +171,11 @@ function commitWork(fiber) {
 
   // effectTag가 PLACEMENT인 경우
   if (fiber.effectTag === "PLACEMENT" && fiber.dom != null) {
-    fiber.parent.dom.appendChild(fiber.dom);
+    let parentFiber = fiber.parent;
+    while (!parentFiber.dom) {
+      parentFiber = parentFiber.parent;
+    }
+    parentFiber.dom.appendChild(fiber.dom);
   }
 
   if (fiber.child) {
