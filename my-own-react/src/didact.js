@@ -38,9 +38,14 @@ function createDom(fiber) {
   Object.keys(fiber.props)
     .filter(isProperty)
     .forEach((name) => {
-      dom[name] = fiber.props[name];
+      if (name.startsWith("on")) {
+        const eventName = name.toLowerCase().substring(2);
+        dom.addEventListener(eventName, fiber.props[name]);
+      } else {
+        dom[name] = fiber.props[name];
+      }
     });
-
+  
   return dom;
 }
 
@@ -333,7 +338,7 @@ function commitWork(fiber) {
 // 파이버 객체 내부에 훅 정보를 순서대로 담을 배열이 있어야 한다.
 // 현재 어떤 파이버가 실행 중인지 추적할 변수 (wipFiber),
 // 현재 몇 번째 훅을 처리 중인지를 추적하는 변수 (hookIndex)를 활용한다.
-export function useState(initial) {
+function useState(initial) {
   // alternate가 존재하지 않는 경우(초기 렌더링)
   // hooks에는 해당 컴포넌트에서 호출된 훅들에 대한 데이터(state, queue)가 들어간다.
   const oldHook =
@@ -358,7 +363,10 @@ export function useState(initial) {
 
   // state를 useState 내에서 저장해야 하는 이유가 뭐지?
   // setState를 연속적으로 여러 번 호출했을 때 리렌더링이 여러번 발생하는 문제
+  // TODO: 값이 똑같은 경우 렌더링이 되지 않도록 방지하기
+  //
   const setState = (action) => {
+    console.log("setState triggered");
     hook.queue.push(action);
     // state가 변경되었다면 wipRoot를 업데이트하여 리렌더링을 트리거한다.
     wipRoot = {
@@ -391,6 +399,7 @@ function render(element, container) {
 const Didact = {
   createElement,
   render,
+  useState,
 };
 
 // 브라우저 환경에서 전역 변수로 할당 (Babel Standalone 대응)
