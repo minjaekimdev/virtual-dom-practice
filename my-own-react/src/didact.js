@@ -362,12 +362,13 @@ function useState(initial) {
   hookIndex++;
 
   // state를 useState 내에서 저장해야 하는 이유가 뭐지?
-  // setState를 연속적으로 여러 번 호출했을 때 리렌더링이 여러번 발생하는 문제
-  // TODO: 값이 똑같은 경우 렌더링이 되지 않도록 방지하기
-  //
   const setState = (action) => {
-    console.log("setState triggered");
     hook.queue.push(action);
+    
+    if (action === hook.state) {
+      return;
+    }
+    
     // state가 변경되었다면 wipRoot를 업데이트하여 리렌더링을 트리거한다.
     wipRoot = {
       dom: currentRoot.dom,
